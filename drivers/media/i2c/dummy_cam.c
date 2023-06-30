@@ -46,7 +46,7 @@ struct dummy_cam {
 	s32 h_blank;
 	s32 v_blank;
 	s32 pixel_rate;
-	s64 link_freq;
+	s32 link_freq;
 };
 
 static s64 link_freq_menu_items[] = {
@@ -258,10 +258,11 @@ static int dummy_cam_ctrls_init(struct v4l2_subdev *sd)
 	/* blank */
 	h_blank = priv->h_blank;
 	priv->hblank_ctrl = v4l2_ctrl_new_std(&priv->ctrl_handler, NULL, V4L2_CID_HBLANK,
-			  h_blank, h_blank, 1, h_blank);
+			  0, h_blank, 1, h_blank);
+
 	v_blank = priv->v_blank;  
 	priv->vblank_ctrl = v4l2_ctrl_new_std(&priv->ctrl_handler, NULL, V4L2_CID_VBLANK,
-			  v_blank, v_blank, 1, v_blank);
+			  0, v_blank, 1, v_blank);
 
 	/* freq */
 	link_freq_menu_items[0] = priv->link_freq;
@@ -336,7 +337,7 @@ static int dummy_cam_probe(struct i2c_client *client,
 	dev_info(dev, "dummy_cam,height_px:              %d", priv->height);
 		ret |= of_property_read_u32(node, "dummy_cam,pixel_format",
 				       &priv->pixel_format);
-	dev_info(dev, "dummy_cam,pixel_format:           %d", priv->pixel_format);
+	dev_info(dev, "dummy_cam,pixel_format:           0x%x", priv->pixel_format);
 	ret |= of_property_read_u32(node, "dummy_cam,max_fps_numerator",
 				       &priv->max_fps.numerator);
 	dev_info(dev, "dummy_cam,max_fps_numerator:      %d", priv->max_fps.numerator);

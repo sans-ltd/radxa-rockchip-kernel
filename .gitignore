@@ -161,3 +161,5 @@ x509.genkey
 
 # Documentation toolchain
 sphinx_*/
+arch/arm64/boot/dts/amlogic/overlays/*
+arch/arm64/boot/dts/rockchip/overlays/*

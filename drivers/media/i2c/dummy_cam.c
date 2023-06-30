@@ -50,7 +50,7 @@ struct dummy_cam {
 };
 
 static const s64 link_freq_menu_items[] = {
-	456000000,  // TODO: Add real value
+	50 * 1000 * 1000,  // TODO: Add real value
 };
 
 static struct dummy_cam *to_dummy_cam(const struct i2c_client *client)
@@ -253,10 +253,10 @@ static int dummy_cam_ctrls_init(struct v4l2_subdev *sd)
 	v4l2_ctrl_handler_init(&priv->ctrl_handler, 10);
 
 	/* blank */
-	h_blank = 424242;  // TODO Add real value
+	h_blank = 442;  // TODO Add real value
 	priv->hblank = v4l2_ctrl_new_std(&priv->ctrl_handler, NULL, V4L2_CID_HBLANK,
 			  h_blank, h_blank, 1, h_blank);
-	v_blank = 232323;  // TODO Add real value
+	v_blank = 23;  // TODO Add real value
 	priv->vblank = v4l2_ctrl_new_std(&priv->ctrl_handler, NULL, V4L2_CID_VBLANK,
 			  v_blank, v_blank, 1, v_blank);
 

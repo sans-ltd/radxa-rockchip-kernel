@@ -2122,6 +2122,16 @@ config VIDEO_PREISP_DUMMY_SENSOR
 	  To compile this driver as a module, choose M here: the
 	  module will be called pisp_dmy.
 
+config VIDEO_DUMMY_CAM
+	tristate "Dummy cam support"
+	depends on VIDEO_V4L2 && I2C && VIDEO_V4L2_SUBDEV_API
+	help
+	  The dummy cam mimics an I2C camera to satisfy other V4L2 / media drivers like MIPI CSI PHY drivers.
+	  The actual timing paramters are configured via OF device tree.
+	  The real hardware has to be controlled from user space.
+	  To compile this driver as a module, choose M here: the
+	  module will be called dummy_cam.
+
 endmenu
 
 menu "Lens drivers"

@@ -26,31 +26,31 @@ struct dummy_cam {
 	struct clk *clk;
 	struct v4l2_rect crop_rect;
 	
-    int hflip;
-	int vflip;
-	u8 analogue_gain;
-	u16 digital_gain;	/* bits 11:0 */
-	u16 exposure_time;
-	u16 test_pattern;
-	u16 test_pattern_solid_color_r;
-	u16 test_pattern_solid_color_gr;
-	u16 test_pattern_solid_color_b;
-	u16 test_pattern_solid_color_gb;
 
-	struct v4l2_ctrl *hblank;
-	struct v4l2_ctrl *vblank;
-	struct v4l2_ctrl *pixel_rate;
+	struct v4l2_ctrl *hblank_ctrl;
+	struct v4l2_ctrl *vblank_ctrl;
+	struct v4l2_ctrl *pixel_rate_ctrl;
 	const struct dummy_cam_mode *cur_mode;
-	u32 cfg_num;
-	u16 cur_vts;
+
+	// Rockchip Meta Data from Device Tree
 	u32 module_index;
 	const char *module_facing;
 	const char *module_name;
 	const char *len_name;
+
+	u32 height;
+	u32 width;
+	u32 pixel_format;
+	struct v4l2_fract max_fps;
+
+	s32 h_blank;
+	s32 v_blank;
+	s32 pixel_rate;
+	s64 link_freq;
 };
 
-static const s64 link_freq_menu_items[] = {
-	50 * 1000 * 1000,  // TODO: Add real value
+static s64 link_freq_menu_items[] = {
+	0
 };
 
 static struct dummy_cam *to_dummy_cam(const struct i2c_client *client)
@@ -94,16 +94,16 @@ static int dummy_cam_get_fmt(struct v4l2_subdev *sd,
 			  struct v4l2_subdev_pad_config *cfg,
 			  struct v4l2_subdev_format *fmt)
 {
-	// struct i2c_client *client = v4l2_get_subdevdata(sd);
-	// struct dummy_cam *priv = to_dummy_cam(client);
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct dummy_cam *priv = to_dummy_cam(client);
 	// const struct dummy_cam_mode *mode = priv->cur_mode;
 
 	if (fmt->which == V4L2_SUBDEV_FORMAT_TRY)
 		return 0;
 
-	fmt->format.width = 1344;  // TODO make values configurable.
-	fmt->format.height = 968;
-	fmt->format.code = MEDIA_BUS_FMT_SRGGB12_1X12;
+	fmt->format.width = priv->width;  // TODO make values configurable.
+	fmt->format.height = priv->height;
+	fmt->format.code = priv->pixel_format;
 	fmt->format.field = V4L2_FIELD_NONE;
 
 	return 0;
@@ -113,9 +113,12 @@ static int dummy_cam_enum_mbus_code(struct v4l2_subdev *sd,
 				 struct v4l2_subdev_pad_config *cfg,
 				 struct v4l2_subdev_mbus_code_enum *code)
 {
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct dummy_cam *priv = to_dummy_cam(client);	
+	
 	if (code->index != 0)
 		return -EINVAL;
-	code->code = MEDIA_BUS_FMT_SRGGB12_1X12;  // TODO make it configurable.
+	code->code = priv->pixel_format;  // TODO make it configurable.
 
 	return 0;
 }
@@ -125,19 +128,19 @@ static int dummy_cam_enum_frame_interval(struct v4l2_subdev *sd,
 				       struct v4l2_subdev_pad_config *cfg,
 				       struct v4l2_subdev_frame_interval_enum *fie)
 {
-	// struct i2c_client *client = v4l2_get_subdevdata(sd);
-	// struct dummy_cam *priv = to_dummy_cam(client);
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct dummy_cam *priv = to_dummy_cam(client);
 
 	if (fie->index >= 1)  // We support only one mode.
 		return -EINVAL;
 
-	if (fie->code != MEDIA_BUS_FMT_SRGGB12_1X12)  // TODO Make it configurable.
+	if (fie->code != priv->pixel_format)  // TODO Make it configurable.
 		return -EINVAL;
 
-	fie->width = 1344;
-	fie->height = 968;
-	fie->interval.numerator = 10000;   // max. FPS
-    fie->interval.denominator = 300000;
+	fie->width = priv->width;
+	fie->height = priv->height;
+	fie->interval.numerator = priv->max_fps.numerator;  
+    fie->interval.denominator = priv->max_fps.denominator;
 
 	return 0;
 }
@@ -246,26 +249,27 @@ static int dummy_cam_ctrls_init(struct v4l2_subdev *sd)
 	struct i2c_client *client = v4l2_get_subdevdata(sd);
 	struct dummy_cam *priv = to_dummy_cam(client);
 	// const struct dummy_cam_mode *mode = priv->cur_mode;
-	s64 pixel_rate, h_blank, v_blank;
+	s32 pixel_rate, h_blank, v_blank;
 	int ret;
 	// u32 fps = 0;
 
 	v4l2_ctrl_handler_init(&priv->ctrl_handler, 10);
 
 	/* blank */
-	h_blank = 442;  // TODO Add real value
-	priv->hblank = v4l2_ctrl_new_std(&priv->ctrl_handler, NULL, V4L2_CID_HBLANK,
+	h_blank = priv->h_blank;
+	priv->hblank_ctrl = v4l2_ctrl_new_std(&priv->ctrl_handler, NULL, V4L2_CID_HBLANK,
 			  h_blank, h_blank, 1, h_blank);
-	v_blank = 23;  // TODO Add real value
-	priv->vblank = v4l2_ctrl_new_std(&priv->ctrl_handler, NULL, V4L2_CID_VBLANK,
+	v_blank = priv->v_blank;  
+	priv->vblank_ctrl = v4l2_ctrl_new_std(&priv->ctrl_handler, NULL, V4L2_CID_VBLANK,
 			  v_blank, v_blank, 1, v_blank);
 
 	/* freq */
+	link_freq_menu_items[0] = priv->link_freq;
 	v4l2_ctrl_new_int_menu(&priv->ctrl_handler, NULL, V4L2_CID_LINK_FREQ,
 			       0, 0, link_freq_menu_items);
 
-	pixel_rate = 456789000; // TODO add real value
-	priv->pixel_rate = v4l2_ctrl_new_std(&priv->ctrl_handler, NULL, V4L2_CID_PIXEL_RATE,
+	pixel_rate = priv->pixel_rate; // TODO add real value
+	priv->pixel_rate_ctrl = v4l2_ctrl_new_std(&priv->ctrl_handler, NULL, V4L2_CID_PIXEL_RATE,
 			  0, pixel_rate, 1, pixel_rate);
 
 
@@ -313,20 +317,48 @@ static int dummy_cam_probe(struct i2c_client *client,
 
 	ret = of_property_read_u32(node, RKMODULE_CAMERA_MODULE_INDEX,
 				   &priv->module_index);
+	dev_info(dev, "rockchip,camera-module-index:     %d", priv->module_index);
 	ret |= of_property_read_string(node, RKMODULE_CAMERA_MODULE_FACING,
 				       &priv->module_facing);
+	dev_info(dev, "rockchip,camera-module-facing:    %s", priv->module_facing);
 	ret |= of_property_read_string(node, RKMODULE_CAMERA_MODULE_NAME,
 				       &priv->module_name);
+	dev_info(dev, "rockchip,camera-module-name:      %s", priv->module_name);
 	ret |= of_property_read_string(node, RKMODULE_CAMERA_LENS_NAME,
 				       &priv->len_name);
+	dev_info(dev, "rockchip,camera-module-lens-name: %s", priv->len_name);
+
+	ret |= of_property_read_u32(node, "dummy_cam,width_px",
+				       &priv->width);
+	dev_info(dev, "dummy_cam,width_px:               %d", priv->width);
+	ret |= of_property_read_u32(node, "dummy_cam,height_px",
+				       &priv->height);
+	dev_info(dev, "dummy_cam,height_px:              %d", priv->height);
+		ret |= of_property_read_u32(node, "dummy_cam,pixel_format",
+				       &priv->pixel_format);
+	dev_info(dev, "dummy_cam,pixel_format:           %d", priv->pixel_format);
+	ret |= of_property_read_u32(node, "dummy_cam,max_fps_numerator",
+				       &priv->max_fps.numerator);
+	dev_info(dev, "dummy_cam,max_fps_numerator:      %d", priv->max_fps.numerator);
+	ret |= of_property_read_u32(node, "dummy_cam,max_fps_denominator",
+				       &priv->max_fps.denominator);
+	dev_info(dev, "dummy_cam,max_fps_denominator:    %d", priv->max_fps.denominator);
+	ret |= of_property_read_s32(node, "dummy_cam,h_blank_px",
+				       &priv->h_blank);
+	dev_info(dev, "dummy_cam,h_blank_px:             %d", priv->h_blank);
+	ret |= of_property_read_s32(node, "dummy_cam,v_blank_lines",
+				       &priv->v_blank);
+	dev_info(dev, "dummy_cam,v_blank_lines:          %d", priv->v_blank);
+	ret |= of_property_read_s32(node, "dummy_cam,link_freq_hz",
+				       &priv->link_freq);
+	dev_info(dev, "dummy_cam,link_freq_hz:           %d", priv->link_freq);
+	ret |= of_property_read_s32(node, "dummy_cam,pixel_rate_hz",
+				       &priv->pixel_rate);
+	dev_info(dev, "dummy_cam,pixel_rate_hz:          %d", priv->pixel_rate);
+
 	if (ret) {
 		dev_err(dev, "could not get module information!\n");
-		// return -EINVAL;
-
-        priv->module_index = 1;
-        priv->module_name = "insmod name";
-        priv->module_facing = "front";
-        priv->len_name = "insmod lens";
+		return -EINVAL;
 	}
 
     /*

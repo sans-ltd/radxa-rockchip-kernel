@@ -58,12 +58,27 @@ static struct dummy_cam *to_dummy_cam(const struct i2c_client *client)
 	return container_of(i2c_get_clientdata(client), struct dummy_cam, subdev);
 }
 
+
+static int dummy_cam_s_power(struct v4l2_subdev *sd, int on)
+{
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct device *dev = &client->dev;
+	// struct dummy_cam *priv = to_dummy_cam(client);
+
+	dev_info(dev, "s_power was called with on = %d", on);
+
+	return 0;
+}
+
 /* V4L2 subdev video operations */
 // 
 static int dummy_cam_s_stream(struct v4l2_subdev *sd, int enable)
 {
-	// struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct i2c_client *client = v4l2_get_subdevdata(sd);
+	struct device *dev = &client->dev;
 	// struct dummy_cam *priv = to_dummy_cam(client);
+
+	dev_info(dev, "s_stream was called with enable = %d", enable);
 
     return 0;
 }
@@ -225,6 +240,7 @@ static struct v4l2_subdev_video_ops dummy_cam_subdev_video_ops = {
 
 // Special IOCTL needed for Rockchip.
 static struct v4l2_subdev_core_ops dummy_cam_subdev_core_ops = {
+	.s_power = dummy_cam_s_power,
 	.ioctl = dummy_cam_ioctl,
 #ifdef CONFIG_COMPAT
 	.compat_ioctl32 = dummy_cam_compat_ioctl32,

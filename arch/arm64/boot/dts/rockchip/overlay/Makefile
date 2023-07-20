@@ -64,8 +64,7 @@ dtbo-$(CONFIG_ARCH_ROCKCHIP) += \
 	rock-5b-radxa-display-8hd.dtbo \
 	rock-5b-radxa-display-10hd.dtbo \
 	rock-5b-rpi-camera-v2.dtbo \
-	rock-5b-sata.dtbo \
-	mipi-csi.dtbo \
+	rock-5b-sata.dtbo 
 
 dtbotxt-$(CONFIG_ARCH_ROCKCHIP) += \
 	README.rockchip-overlays

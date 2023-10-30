@@ -1,3 +1,22 @@
+Changes made by SANS Limited
+============================
+
+dummy_cam Driver
+----------------
+
+### Purpose
+The camera used by our customer needs a proprietary initialisation via i2c. Since this needs some special vendor tooling which is proteced by a NDA, we do the actual initialisation of the camera from user-space. But video4linux and the media framework expect that the camera settings are provided by a kernel driver. Later initialisation from user-space via `media-ctl` / `v4l2-ctl` fails, probably due to specialities of the Rock Chip processor used in this project.
+
+### Functionality of the dummy_cam driver
+This is where the `dummy_cam` driver comes into the project. It reads the settings which have to be provided to the media and v4l2 APIs from the device tree.
+
+It does no interaction or initialisation with a real hardware. This has to be done from the user-space.
+
+For further references see the source code [here](drivers/media/i2c/dummy_cam.c).
+
+### How to use
+See [here](../../../radxa-overlays/blob/dummy_cam_driver/arch/arm64/boot/dts/rockchip/overlays/mipi-csi.dts) for a reference how to use the `dummy_cam` driver through a device tree overlay.
+
 # How do I submit patches to Android Common Kernels
 
 1. BEST: Make all of your changes to upstream Linux. If appropriate, backport to the stable releases.
